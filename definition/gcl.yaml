@@ -3,7 +3,7 @@ apiVersion: gateway.mulesoft.com/v1alpha1
 kind: Extension
 metadata:
   labels:
-    title: curity-phantom-token
+    title: Curity Phantom Token
     category: Security
     description: "This extension enables the phantom token pattern through introspection with the Curity Identity Server."
     metadata/interfaceScope: api,resource
