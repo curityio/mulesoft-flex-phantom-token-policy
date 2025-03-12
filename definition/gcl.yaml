@@ -1,0 +1,63 @@
+---
+apiVersion: gateway.mulesoft.com/v1alpha1
+kind: Extension
+metadata:
+  labels:
+    title: curity-phantom-token
+    category: Security
+    description: "This extension enables the phantom token pattern through introspection with the Curity Identity Server."
+    metadata/interfaceScope: api,resource
+spec:
+  extends:
+    - name: extension-definition
+      namespace: default
+  properties:
+    introspectionEndpoint:
+      title: Introspection Endpoint
+      type: string
+      format: service
+      default: "https://idsvr.example.com/oauth/v2/oauth-introspect"
+      description: "The introspection endpoint of the OAuth server."
+    introspectionClient:
+      title: Introspection Client
+      type: string
+      default: "client_id"
+      description: "The client_id to use in the introspection request."
+    introspectionSecret:
+      title: Introspection Secret
+      type: string
+      default: "client_secret"
+      description: "The client_secret to use in the introspection request."
+    requiredAud:
+      title: The required audience
+      type: string
+      default: ""
+      description: "The requried value of the 'aud' claim"
+    requiredIss:
+      title: The required issuer
+      type: string
+      default: "https://idsvr.example.com/oauth/v2/oauth-anonymous"
+      description: "The requried value of the 'iss' claim"
+    requiredScope:
+      title: The required scope(s)
+      type: string
+      default: ""
+      description: "Space separated string of scope(s) required to access the resource"
+    useApplicationJWTHeader:
+      title: Use 'application/jwt' Header
+      type: boolean
+      default: true
+      description: "If true, the extension will use the application/jwt header for introspection."
+    tokenExtractor:
+      title: Token Extractor
+      type: string
+      format: dataweave
+      default: "#[dw::core::Strings::substringAfter(attributes.headers['Authorization'], 'Bearer ')]"
+  required:
+    - introspectionEndpoint
+    - introspectionClient
+    - introspectionSecret
+    - useApplicationJWTHeader
+    - tokenExtractor
+    - requiredAud
+    - requiredIss
