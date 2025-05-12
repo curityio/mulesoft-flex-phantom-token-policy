@@ -22,6 +22,9 @@ This outline of [Developing Custom Policies](https://docs.mulesoft.com/pdk/lates
 ### Authentication to the Anypoint Platform CLI
 To build, publish and release the custom policy, authentication to the Anypoint Platform CLI is needed. This can be achieved in a couple o different ways and is outlined in the [Mulesoft documentation - Authentication to the Anypoint Platform CLI](https://docs.mulesoft.com/anypoint-cli/latest/auth).
 
+> [!NOTE]
+> Also make sure to update `group_id` in `Cargo.toml` to reflect your environment. The group_id can be found in the Mulesoft Anypoint Portal under Administration &#8594; Access Management &#8594; Business Groups &#8594; Select your group &#8594; Settings &#8594; Business Group ID.
+
 ## Compiling the Policy
 To compile the policy, make sure the prerequisites are met and then run:
 
