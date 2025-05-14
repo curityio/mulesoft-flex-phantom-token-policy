@@ -8,28 +8,14 @@ fn decode_base64(input: &str) -> Result<String, Box<dyn Error>> {
     Ok(decoded_str)
 }
 
-pub fn decode_jwt(
-    token: &str
-) -> Result<Claims, Box<dyn Error>> {
+pub fn decode_jwt(token: &str) -> Result<Claims, Box<dyn Error>> {
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
         return Err("Invalid JWT format".into());
     }
-
-    // Decode header, not used
-    let _header_json = decode_base64(parts[0])?;
-    
     // Decode payload
     let payload_json = decode_base64(parts[1])?;
-    let payload = serde_json::from_str::<Claims>(&payload_json).expect("Error parsing payload");
-
-    let claims = Claims {
-        exp: payload.exp,
-        iss: payload.iss.to_string(),
-        aud: payload.aud.to_string(),
-        nbf: payload.nbf,
-        scope: payload.scope.split_whitespace().collect(),
-    };
+    let claims = serde_json::from_str::<Claims>(&payload_json).expect(&format!("Failed to parse claims: {}", payload_json));
 
     Ok(claims)
 }
