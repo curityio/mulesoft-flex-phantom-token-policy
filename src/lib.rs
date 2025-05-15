@@ -10,8 +10,27 @@ use pdk::hl::*;
 use pdk::logger;
 use pdk::script::{HandlerAttributesBinding, TryFromValue};
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde::{Deserialize};
+use serde::{Deserialize, Deserializer};
 use base64::{engine::general_purpose, Engine};
+
+// Custom deserialization for `aud` to handle both single string and array
+fn deserialize_aud<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Aud {
+        Single(String),
+        Multiple(Vec<String>),
+    }
+
+    let aud = Aud::deserialize(deserializer)?;
+    Ok(match aud {
+        Aud::Single(s) => vec![s],
+        Aud::Multiple(v) => v,
+    })
+}
 
 #[derive(Debug)]
 pub enum FilterError {
@@ -37,7 +56,8 @@ struct IntrospectionResponse {
     active: bool,
     phantom_token: String,
     iss: String,
-    aud: String,
+    #[serde(deserialize_with = "deserialize_aud")]
+    aud: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,7 +65,8 @@ struct Claims {
     exp: Option<u64>,
     nbf: Option<u64>,
     scope: String,
-    aud: String,
+    #[serde(deserialize_with = "deserialize_aud")]
+    aud: Vec<String>,
     iss: String,
 }
 
@@ -89,7 +110,7 @@ async fn introspect_token(
         .map_err(FilterError::ClientError)?;
 
     if response.status_code() == 200 {
-        //If 'application/jwt' header is used, decode the JWT and return the claims
+        // If 'application/jwt' header is used, decode the JWT and return the claims
         if config.use_application_jwt_header {
             let jwt = response.body();
             let jwt_str = std::str::from_utf8(jwt).unwrap();
@@ -97,7 +118,7 @@ async fn introspect_token(
             match decode_jwt(jwt_str) {
                 Ok(claims) => {
                     return Ok(IntrospectionResponse {
-                        active: true, // Response form introspection indicates token is active
+                        active: true, // Response from introspection indicates token is active
                         exp: claims.exp,
                         nbf: claims.nbf,
                         scope: claims.scope,
@@ -127,7 +148,6 @@ async fn do_filter(
     config: &Config,
     client: HttpClient,
 ) -> Result<IntrospectionResponse, FilterError> {
-
     // Extracts the token from the request
     let mut evaluator = config.token_extractor.evaluator();
     evaluator.bind_attributes(&HandlerAttributesBinding::partial(headers_state.handler()));
@@ -161,8 +181,8 @@ async fn do_filter(
         return Err(FilterError::NotYetActive);
     }
 
-    // Validates if the aud matches the required aud
-    if response.aud != config.required_aud {
+    // Validates if the required aud is present in the aud list
+    if !response.aud.contains(&config.required_aud) {
         return Err(FilterError::WrongAud);
     }
 
@@ -179,10 +199,10 @@ async fn do_filter(
         logger::debug!("Token scopes: {:?}", token_scopes);
 
         if !required_scopes.iter().all(|&required_scope| token_scopes.contains(&required_scope)) {
-        return Err(FilterError::MissingScope);
+            return Err(FilterError::MissingScope);
         }
     }
-    
+
     // Validation succeeded!
     Ok(response)
 }
@@ -215,12 +235,10 @@ async fn request_filter(state: RequestState, client: HttpClient, config: &Config
     let state = state.into_headers_state().await;
 
     match do_filter(&state, config, client).await {
-       
         Ok(response) => {
             if config.use_application_jwt_header {
                 logger::debug!("Using application/jwt header");
-            }
-            else {
+            } else {
                 logger::debug!("Using phantom_token claim");
             }
 
